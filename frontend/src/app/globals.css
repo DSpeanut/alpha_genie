@@ -1,0 +1,59 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --bg-primary: #0a0a0f;
+  --bg-secondary: #12121a;
+  --bg-card: #1a1a24;
+  --border-color: #2a2a3a;
+  --text-primary: #ffffff;
+  --text-secondary: #a0a0b0;
+  --accent-blue: #3b82f6;
+  --accent-blue-light: #60a5fa;
+  --accent-blue-dark: #1d4ed8;
+}
+
+body {
+  background-color: var(--bg-primary);
+  color: var(--text-primary);
+}
+
+/* Custom scrollbar for dark theme */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: var(--bg-secondary);
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--border-color);
+  border-radius: 3px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #3a3a4a;
+}
+
+/* Override Tremor styles for dark theme */
+.tremor-Card-root {
+  background-color: var(--bg-card) !important;
+  border-color: var(--border-color) !important;
+}
+
+.tremor-Title-root,
+.tremor-Metric-root {
+  color: var(--text-primary) !important;
+}
+
+.tremor-Text-root {
+  color: var(--text-secondary) !important;
+}
+
+.tremor-TableCell-root,
+.tremor-TableHeaderCell-root {
+  border-color: var(--border-color) !important;
+}

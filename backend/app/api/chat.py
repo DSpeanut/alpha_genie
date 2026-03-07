@@ -1,6 +1,6 @@
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
-from app.services.llm import llm_service
+from app.agents.llm import llm_service
 from app.core.config import get_settings
 
 router = APIRouter(prefix="/chat", tags=["chat"])

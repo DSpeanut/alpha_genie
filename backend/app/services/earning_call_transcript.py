@@ -1,4 +1,5 @@
 import asyncio
+import logging
 import httpx
 import pandas as pd
 import numpy as np
@@ -7,7 +8,9 @@ from datetime import datetime, timedelta
 from typing import Optional, Tuple, Dict, Any, List
 import nltk
 from nltk.tokenize import sent_tokenize
-from transformers import pipeline, BertTokenizer, BertForSequenceClassification
+from app.agents.models import ml_models
+
+logger = logging.getLogger(__name__)
 
 # Download nltk data (run once)
 try:
@@ -17,27 +20,31 @@ except LookupError:
 
 
 def get_recent_quarters(num_quarters: int = 4) -> List[str]:
-    """Get list of recent quarters with available earnings (module-level function)"""
+    """Get list of recent quarters with available earnings.
+    Accounts for reporting delay (~2-6 weeks after quarter ends):
+      Q1 (Jan-Mar) -> available mid-April/May
+      Q2 (Apr-Jun) -> available mid-July/August
+      Q3 (Jul-Sep) -> available mid-October/November
+      Q4 (Oct-Dec) -> available mid-January/February
+    """
     today = datetime.now()
     year = today.year
     month = today.month
 
-    # Determine current quarter
+    # Determine latest quarter with available earnings
     if month <= 3:
-        current_q = 1
+        latest_q, latest_y = 4, year - 1
     elif month <= 6:
-        current_q = 2
+        latest_q, latest_y = 1, year
     elif month <= 9:
-        current_q = 3
+        latest_q, latest_y = 2, year
     else:
-        current_q = 4
+        latest_q, latest_y = 3, year
 
     quarters = []
-    q = current_q
-    y = year
+    q, y = latest_q, latest_y
 
     for _ in range(num_quarters):
-        # Alpha Vantage uses format: 2025Q4 (not Q4_2025)
         quarters.append(f"{y}Q{q}")
         q -= 1
         if q == 0:
@@ -51,28 +58,8 @@ class EarningCallTranscript:
     """Service for fetching earning call transcript and perform sentiment analysis"""
 
     def __init__(self):
-        self.financial_sentence_classifier = None
-        self.finbert_sentiment_model = None
-        self.finbert_tokenizer = None
         self.earning_class_df = None
         self.earning_financial_sentence = None
-        self._models_loaded = False
-
-    def _load_models(self):
-        """Lazy load models only when needed"""
-        if not self._models_loaded:
-            self.financial_sentence_classifier = pipeline(
-                "zero-shot-classification",
-                model="facebook/bart-large-mnli"
-            )
-            self.finbert_sentiment_model = BertForSequenceClassification.from_pretrained(
-                "ahmedrachid/FinancialBERT-Sentiment-Analysis",
-                num_labels=3
-            )
-            self.finbert_tokenizer = BertTokenizer.from_pretrained(
-                "ahmedrachid/FinancialBERT-Sentiment-Analysis"
-            )
-            self._models_loaded = True
 
     async def fetch_transcript(self, symbol: str, quarter: str, api_key: str) -> str:
         """Get transcript for a symbol and specific quarter"""
@@ -132,23 +119,21 @@ class EarningCallTranscript:
         """Process transcript text into sentences"""
         try:
             transcript_lower = transcript.lower()
-            print(f"[DEBUG] Transcript length: {len(transcript_lower)} chars")
+            logger.debug("Transcript length: %d chars", len(transcript_lower))
             earning_report_sentences = sent_tokenize(transcript_lower)
-            print(f"[DEBUG] Tokenized into {len(earning_report_sentences)} sentences")
+            logger.debug("Tokenized into %d sentences", len(earning_report_sentences))
             self.earning_class_df = pd.DataFrame({
                 'earning_sentence': earning_report_sentences
             })
             return self.earning_class_df
 
         except Exception as e:
-            print(f"[DEBUG] transcript_text_processing error: {str(e)}")
+            logger.exception("transcript_text_processing error")
             raise Exception(f"Failed to process transcript: {str(e)}")
 
     async def classify_financial_sentence(self) -> pd.DataFrame:
         """Classify financial specific sentences"""
         try:
-            self._load_models()
-
             financial_keywords = {
                 'revenue', 'profit', 'earnings', 'ebitda', 'margin', 'quarter', 'quarterly',
                 'fiscal', 'dividend', 'shareholder', 'equity', 'liability', 'asset',
@@ -167,7 +152,7 @@ class EarningCallTranscript:
 
             def detect_financial_sentences_lm(sentence: str) -> Tuple[int, float]:
                 labels = ["financial", "general"]
-                result = self.financial_sentence_classifier(sentence, labels)
+                result = ml_models.financial_sentence_classifier(sentence, labels)
                 label = 1 if result['labels'][0] == "financial" else 0
                 score = np.round(result['scores'][0], 2)
                 return label, score
@@ -177,36 +162,36 @@ class EarningCallTranscript:
             self.earning_class_df['keyword_search_label'] = [r[0] for r in keyword_results]
             self.earning_class_df['keyword_search_score'] = [r[1] for r in keyword_results]
             keyword_matches = sum(r[0] for r in keyword_results)
-            print(f"[DEBUG] Keyword detection: {keyword_matches} financial sentences found")
+            logger.debug("Keyword detection: %d financial sentences found", keyword_matches)
 
             # Apply LM classification (using list comprehension for robustness)
-            print(f"[DEBUG] Starting LM classification on {len(self.earning_class_df)} sentences...")
+            logger.debug("Starting LM classification on %d sentences...", len(self.earning_class_df))
             lm_results = [detect_financial_sentences_lm(s) for s in self.earning_class_df['earning_sentence']]
             self.earning_class_df['keyword_classified_label'] = [r[0] for r in lm_results]
             self.earning_class_df['keyword_classified_score'] = [r[1] for r in lm_results]
             lm_matches = sum(r[0] for r in lm_results)
-            print(f"[DEBUG] LM classification: {lm_matches} financial sentences found")
+            logger.debug("LM classification: %d financial sentences found", lm_matches)
 
             # Filter financial sentences with high confidence
             self.earning_financial_sentence = self.earning_class_df[
                 (self.earning_class_df['keyword_classified_label'] == 1) &
                 (self.earning_class_df['keyword_classified_score'] > 0.90)
             ].copy()
-            print(f"[DEBUG] After 0.90 threshold filter: {len(self.earning_financial_sentence)} sentences")
+            logger.debug("After 0.90 threshold filter: %d sentences", len(self.earning_financial_sentence))
 
             # If no sentences pass the filter, lower the threshold
             if len(self.earning_financial_sentence) == 0:
                 self.earning_financial_sentence = self.earning_class_df[
                     self.earning_class_df['keyword_classified_label'] == 1
                 ].copy()
-                print(f"[DEBUG] After lowered threshold: {len(self.earning_financial_sentence)} sentences")
+                logger.debug("After lowered threshold: %d sentences", len(self.earning_financial_sentence))
 
             # If still empty, use keyword-matched sentences
             if len(self.earning_financial_sentence) == 0:
                 self.earning_financial_sentence = self.earning_class_df[
                     self.earning_class_df['keyword_search_label'] == 1
                 ].copy()
-                print(f"[DEBUG] Using keyword fallback: {len(self.earning_financial_sentence)} sentences")
+                logger.debug("Using keyword fallback: %d sentences", len(self.earning_financial_sentence))
 
             return self.earning_financial_sentence
 
@@ -228,10 +213,8 @@ class EarningCallTranscript:
                     "top_negative_sentences": [],
                 }
 
-            self._load_models()
-
             def get_finbert_sentiment_scores(text: str) -> Tuple[float, float, float]:
-                inputs = self.finbert_tokenizer(
+                inputs = ml_models.finbert_tokenizer(
                     text,
                     return_tensors="pt",
                     padding=True,
@@ -239,7 +222,7 @@ class EarningCallTranscript:
                     max_length=512
                 )
                 with torch.no_grad():
-                    outputs = self.finbert_sentiment_model(**inputs)
+                    outputs = ml_models.finbert_sentiment_model(**inputs)
                     logits = outputs.logits
                     probabilities = torch.softmax(logits, dim=1)[0]
 

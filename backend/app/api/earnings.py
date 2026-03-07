@@ -1,8 +1,11 @@
+import logging
 from fastapi import APIRouter, HTTPException, Query
 from pydantic import BaseModel
 from typing import List
 from app.core.config import get_settings
 from app.services.earning_call_transcript import earning_call_service, get_recent_quarters
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/earnings", tags=["earnings"])
 
@@ -76,7 +79,6 @@ async def analyze_earning_call(
     - quarter: Quarter format Q1_2024
     """
     api_key = settings.earnings_api_key
-    print(f"[DEBUG] API key loaded: {bool(api_key)} (length: {len(api_key) if api_key else 0})")
 
     if not api_key:
         raise HTTPException(
@@ -85,13 +87,13 @@ async def analyze_earning_call(
         )
 
     try:
-        print(f"[DEBUG] Starting analysis for {symbol.upper()} {quarter}")
+        logger.info("Starting analysis for %s %s", symbol.upper(), quarter)
         result = await earning_call_service.analyze(
             symbol=symbol.upper(),
             quarter=quarter,
             api_key=api_key
         )
-        print(f"[DEBUG] Analysis complete: {result.get('summary')}")
+        logger.info("Analysis complete: %s", result.get("summary"))
         return AnalysisResponse(
             symbol=symbol.upper(),
             quarter=quarter,
@@ -99,8 +101,7 @@ async def analyze_earning_call(
             summary=result.get("summary")
         )
     except Exception as e:
-        import traceback
-        traceback.print_exc()
+        logger.exception("Analysis failed for %s %s", symbol.upper(), quarter)
         raise HTTPException(status_code=500, detail=str(e))
 
 

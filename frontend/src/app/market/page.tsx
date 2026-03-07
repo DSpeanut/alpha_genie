@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import api from "@/lib/api";
 
 interface Quote {
@@ -39,54 +39,6 @@ interface SentimentData {
   top_negative_sentences: SentenceSample[];
 }
 
-// Generate last N quarters with AVAILABLE earnings (accounting for reporting delay)
-// Earnings are typically reported ~2-6 weeks after quarter ends:
-// Q1 (Jan-Mar) -> reported mid-April to May
-// Q2 (Apr-Jun) -> reported mid-July to August
-// Q3 (Jul-Sep) -> reported mid-October to November
-// Q4 (Oct-Dec) -> reported mid-January to February
-function getRecentQuarters(numQuarters: number = 4): string[] {
-  const today = new Date();
-  let year = today.getFullYear();
-  let month = today.getMonth() + 1; // 1-12
-
-  // Determine latest quarter with AVAILABLE earnings
-  // (previous quarter's earnings become available ~mid-month after quarter ends)
-  let latestAvailableQ: number;
-  let latestAvailableY: number = year;
-
-  if (month >= 1 && month <= 3) {
-    // Jan-Mar: Q4 of previous year is available (reported Jan/Feb)
-    latestAvailableQ = 4;
-    latestAvailableY = year - 1;
-  } else if (month >= 4 && month <= 6) {
-    // Apr-Jun: Q1 is available (reported Apr/May)
-    latestAvailableQ = 1;
-  } else if (month >= 7 && month <= 9) {
-    // Jul-Sep: Q2 is available (reported Jul/Aug)
-    latestAvailableQ = 2;
-  } else {
-    // Oct-Dec: Q3 is available (reported Oct/Nov)
-    latestAvailableQ = 3;
-  }
-
-  const quarters: string[] = [];
-  let q = latestAvailableQ;
-  let y = latestAvailableY;
-
-  for (let i = 0; i < numQuarters; i++) {
-    // Alpha Vantage uses format: 2025Q4 (not Q4_2025)
-    quarters.push(`${y}Q${q}`);
-    q -= 1;
-    if (q === 0) {
-      q = 4;
-      y -= 1;
-    }
-  }
-
-  return quarters;
-}
-
 // Format quarter for display (2025Q4 -> "Q4 2025")
 function formatQuarter(quarter: string): string {
   const match = quarter.match(/(\d{4})Q(\d)/);
@@ -106,8 +58,11 @@ export default function MarketPage() {
   const [loading, setLoading] = useState(false);
   const [sentimentLoading, setSentimentLoading] = useState(false);
   const [expandedSentiment, setExpandedSentiment] = useState<string | null>(null);
+  const [recentQuarters, setRecentQuarters] = useState<string[]>([]);
 
-  const recentQuarters = getRecentQuarters(4);
+  useEffect(() => {
+    api.get("/earnings/quarters").then(setRecentQuarters).catch(() => {});
+  }, []);
 
   const searchSymbol = async () => {
     if (!symbol.trim()) return;

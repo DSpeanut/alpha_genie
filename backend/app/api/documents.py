@@ -3,7 +3,7 @@ from sqlalchemy.orm import Session
 from app.core.database import get_db
 from app.models.document import Document
 from app.services.document import document_service
-from app.services.llm import llm_service
+from app.agents.llm import llm_service
 
 router = APIRouter(prefix="/documents", tags=["documents"])
 

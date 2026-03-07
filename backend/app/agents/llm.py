@@ -1,3 +1,4 @@
+import json
 from openai import OpenAI
 from anthropic import Anthropic
 from app.core.config import get_settings
@@ -90,7 +91,6 @@ JSON Response:"""
 
         # Parse JSON response (basic)
         try:
-            import json
             return json.loads(response)
         except:
             return {"raw_response": response}
@@ -98,7 +98,7 @@ JSON Response:"""
     async def _openai_complete(self, prompt: str) -> str:
         """Call OpenAI API"""
         response = self.openai_client.chat.completions.create(
-            model="gpt-4o-mini",
+            model=settings.openai_model,
             messages=[{"role": "user", "content": prompt}],
             max_tokens=1000,
             temperature=0.3

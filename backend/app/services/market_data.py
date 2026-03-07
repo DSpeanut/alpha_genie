@@ -65,16 +65,6 @@ class MarketDataService:
         )
         return list(results)
 
-    async def search_symbol(self, query: str) -> list:
-        """Search for symbols matching query"""
-        try:
-            # Use yfinance search
-            tickers = yf.Tickers(query)
-            # This is a simplified search - in production, use a proper API
-            return [{"symbol": query.upper(), "name": query}]
-        except:
-            return []
-
 
 # Singleton instance
 market_data_service = MarketDataService()

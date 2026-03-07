@@ -1,8 +1,13 @@
+from pathlib import Path
+from dotenv import load_dotenv
+
+load_dotenv(Path(__file__).resolve().parent.parent / ".env", override=True)
+
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from app.core.config import get_settings
 from app.core.database import init_db
-from app.api import health, market, documents, portfolio, chat, earnings
+from app.api import health, market, documents, portfolio, earnings, agent
 
 settings = get_settings()
 
@@ -32,8 +37,8 @@ app.include_router(health.router)
 app.include_router(market.router, prefix="/api")
 app.include_router(documents.router, prefix="/api")
 app.include_router(portfolio.router, prefix="/api")
-app.include_router(chat.router, prefix="/api")
 app.include_router(earnings.router, prefix="/api")
+app.include_router(agent.router, prefix="/api")
 
 
 @app.on_event("startup")

@@ -46,7 +46,7 @@ export default function ChatPanel() {
 
     try {
       const response = await fetch(
-        `${process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000"}/api/chat`,
+        `${process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000"}/api/agent/assistant`,
         {
           method: "POST",
           headers: { "Content-Type": "application/json" },

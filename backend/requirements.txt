@@ -14,6 +14,9 @@ passlib[bcrypt]>=1.7.4
 # LLM
 openai>=1.0.0
 anthropic>=0.18.0
+torch
+transformers
+sentence-transformers
 
 # Market Data
 yfinance>=0.2.30

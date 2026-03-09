@@ -8,7 +8,9 @@ Usage:
 """
 
 from langchain_core.tools import tool
+from tavily import TavilyClient
 
+settings = get_settings()
 
 # ── Example placeholder tools ────────────────────────────────────────────────
 # Replace / extend these with real implementations.
@@ -26,10 +28,20 @@ def get_earnings_sentiment(symbol: str, quarter: str = "latest") -> str:
     # TODO: wire up to earning_call_service.analyze()
     return f"[placeholder] Sentiment for {symbol.upper()} {quarter} not yet implemented."
 
+@tool
+def get_assetmanagement_web_search(query: str) -> str:
+    """Get asset management view for a stock."""
+    client = TavilyClient(settings.tavily_api_key)
+    response = client.search(
+        query=query,
+        search_depth="advanced"
+    )
+    return response
 
 # ── Tool registry ─────────────────────────────────────────────────────────────
 # Add new tools to this list to make them available to the agent.
 tools = [
     get_stock_price,
     get_earnings_sentiment,
+    get_assetmanagement_web_search
 ]

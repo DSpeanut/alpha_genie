@@ -1,10 +1,6 @@
-import json
 from openai import OpenAI
 from anthropic import Anthropic
 from app.core.config import get_settings
-from langchain_openai import ChatOpenAI
-from langchain_core.messages import HumanMessage
-from app.agents.tools import tools
 
 settings = get_settings()
 
@@ -23,12 +19,12 @@ class LLMService:
         provider = provider or settings.default_llm
 
         prompt = f"""Please provide a concise summary of the following document.
-                Focus on key points, important metrics, and actionable insights.
+Focus on key points, important metrics, and actionable insights.
 
-                Document:
-                {text[:8000]}  # Limit context
+Document:
+{text[:8000]}  # Limit context
 
-                Summary:"""
+Summary:"""
 
         if provider == "openai" and self.openai_client:
             return await self._openai_complete(prompt)
@@ -93,20 +89,20 @@ JSON Response:"""
 
         # Parse JSON response (basic)
         try:
+            import json
             return json.loads(response)
         except:
             return {"raw_response": response}
 
     async def _openai_complete(self, prompt: str) -> str:
         """Call OpenAI API"""
-        model = ChatOpenAI(
-            model=settings.openai_model,
-            temperature=0.3,
+        response = self.openai_client.chat.completions.create(
+            model="gpt-4o-mini",
+            messages=[{"role": "user", "content": prompt}],
             max_tokens=1000,
-        ).bind_tools(tools)
-        
-        response = await model.ainvoke([HumanMessage(content=prompt)])
-        return response.content
+            temperature=0.3
+        )
+        return response.choices[0].message.content
 
     async def _anthropic_complete(self, prompt: str) -> str:
         """Call Anthropic API"""

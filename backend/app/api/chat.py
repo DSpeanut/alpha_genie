@@ -27,7 +27,15 @@ You help with:
 
 Be concise, professional, and data-driven in your responses.
 If you don't have specific real-time data, acknowledge that and provide general guidance.
-Always remind users that this is not financial advice and they should consult professionals for investment decisions."""
+Always remind users that this is not financial advice and they should consult professionals for investment decisions.
+
+if user ask price of specific company, extract ticker and use the tool to fetch. 
+you have 3 tools available. 
+1. get_stock_price(symbol: str) -> str: Get the current stock price for a given ticker symbol (e.g. AAPL, TSLA).
+2. get_earnings_sentiment(symbol: str, quarter: str = "latest") -> str: Get earnings call sentiment for a stock. Quarter format: 2025Q1 or 'latest'.
+3. get_assetmanagement_web_search(query: str) -> str: search anything on web. 
+
+"""
 
 
 @router.post("/", response_model=ChatResponse)
@@ -41,9 +49,10 @@ async def chat(request: ChatRequest):
         # Build the prompt
         full_prompt = f"""{SYSTEM_PROMPT}
 
-User Question: {request.message}
+        User Question: {request.message}
+        always try to answer in capital letter
 
-Assistant Response:"""
+        Assistant Response:"""
 
         # Try to get response from LLM
         response = await llm_service.chat(full_prompt)

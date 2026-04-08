@@ -31,11 +31,11 @@ app.add_middleware(
 
 # Include routers
 app.include_router(health.router)
+app.include_router(agent.router, prefix="/api")  # AI Agent with tools
 app.include_router(market.router, prefix="/api")
 app.include_router(documents.router, prefix="/api")
 app.include_router(portfolio.router, prefix="/api")
 app.include_router(earnings.router, prefix="/api")
-app.include_router(agent.router, prefix="/api")
 
 
 @app.on_event("startup")

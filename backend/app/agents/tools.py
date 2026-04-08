@@ -9,7 +9,11 @@ Usage:
 
 from langchain_core.tools import tool
 from tavily import TavilyClient
+from app.core.config import get_settings
+import yfinance as yf
+import logging
 
+logger = logging.getLogger(__name__)
 settings = get_settings()
 
 # ── Example placeholder tools ────────────────────────────────────────────────
@@ -18,8 +22,22 @@ settings = get_settings()
 @tool
 def get_stock_price(symbol: str) -> str:
     """Get the current stock price for a given ticker symbol (e.g. AAPL, TSLA)."""
-    # TODO: wire up to market_data_service.get_quote()
-    return f"[placeholder] Price for {symbol.upper()} not yet implemented."
+    try:
+        logger.info(f"Fetching stock price for {symbol}")
+        ticker = yf.Ticker(symbol)
+        data = ticker.history(period="1d")
+        if data.empty:
+            msg = f"No data found for {symbol.upper()}"
+            logger.warning(msg)
+            return msg
+        current_price = data["Close"].iloc[-1]
+        result = f"Current price for {symbol.upper()}: ${current_price:.2f}"
+        logger.info(f"Stock price result: {result}")
+        return result
+    except Exception as e:
+        error_msg = f"Error fetching price for {symbol.upper()}: {str(e)}"
+        logger.error(error_msg, exc_info=True)
+        return error_msg
 
 
 @tool

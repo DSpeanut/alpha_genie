@@ -26,6 +26,7 @@ class Settings(BaseSettings):
     anthropic_api_key: str = Field(default="", alias="ANTHROPIC_API_KEY")
     default_llm: str = "openai"
     openai_model: str = Field(default="gpt-4o", alias="OPENAI_MODEL")
+    tavily_api_key: str = Field(default="", alias="TAVILY_API_KEY")
 
     # External APIs
     earnings_api_key: str = Field(default="", alias="EARNINGS_API_KEY")

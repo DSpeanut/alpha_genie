@@ -36,6 +36,8 @@ Thumbs.db
 # Data
 data/uploads/*
 data/*.sqlite
+data/*.db
+data/chroma/
 !data/.gitkeep
 
 # Logs
@@ -50,3 +52,4 @@ htmlcov/
 # Jupyter
 .ipynb_checkpoints/
 notebooks/
+

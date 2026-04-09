@@ -7,6 +7,9 @@ from pathlib import Path
 BACKEND_DIR = Path(__file__).resolve().parent.parent.parent
 ENV_FILE = BACKEND_DIR / ".env"
 
+# Project root data directory (one level above backend/)
+DATA_DIR = BACKEND_DIR.parent / "data"
+
 
 class Settings(BaseSettings):
     # App
@@ -14,7 +17,7 @@ class Settings(BaseSettings):
     debug: bool = True
 
     # Database
-    database_url: str = "sqlite:///./data/alpha_genie.db"
+    database_url: str = f"sqlite:///{DATA_DIR}/alpha_genie.db"
 
     # Auth
     secret_key: str = "dev-secret-key-change-in-production"
@@ -32,7 +35,7 @@ class Settings(BaseSettings):
     earnings_api_key: str = Field(default="", alias="EARNINGS_API_KEY")
 
     # File Storage
-    upload_dir: str = "./data/uploads"
+    upload_dir: str = str(DATA_DIR / "uploads")
     max_upload_size: int = 10 * 1024 * 1024
 
     class Config:
